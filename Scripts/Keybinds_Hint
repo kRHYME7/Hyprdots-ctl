@@ -24,8 +24,12 @@ fnt_override="configuration {font: \"JetBrainsMono Nerd Font ${fnt_override}\";}
 icon_override=$(gsettings get org.gnome.desktop.interface icon-theme | sed "s/'//g")
 icon_override="configuration {icon-theme: \"${icon_override}\";}"
 
-keyVars="$(grep -h '^ *\$' $keyConf | awk -F ' = ' '{gsub(/^ *\$| *$/, "", $1); gsub(/^ *| *$/, "", $2); print $1 "='\''"$2"'\''"}')"
-# echo "$keyVars"
+ keyVars="$(grep -h '^ *\$' $keyConf | awk -F ' = ' '{gsub(/^ *\$| *$/, "", $1); gsub(/^ *| *$/, "", $2); print $1 "='\''"$2"'\''"}')"
+keyVars+="
+"
+keyVars+="HOME=$HOME"
+#  echo "$keyVars"
+
 substitute_vars() {
   local s="$1"
   local IFS=$'\n'
@@ -53,12 +57,14 @@ substitute_vars() {
 # }
 
 
-scrPath='~/.config/hypr/scripts'
-comments=$(awk -v scrPath="$scrPath" -F ',' '!/^#/ && /bind*/ && $3 ~ /exec/ && NF && $4 !~ /^ *$/ {gsub(/\$scrPath/, scrPath, $4); print $4}' $keyConf)
-comments=$(substitute_vars "$comments" | awk -F'#' '{gsub(/^ */, "", $1); gsub(/ *$/, "", $1); split($2, a, " "); a[1] = toupper(substr(a[1], 1, 1)) substr(a[1], 2); $2 = a[1]; for(i=2; i<=length(a); i++) $2 = $2" "a[i]; gsub(/^ */, "", $2); gsub(/ *$/, "", $2); if (length($1) > 0) print "\""$1"\" : \""(length($2) > 0 ? $2 : $1)"\","}'|
-awk '!seen[$0]++')
-# echo "$comments"
 
+# scrPath='~/.config/hypr/scripts'
+# comments=$(awk -v scrPath="$scrPath" -F ',' '!/^#/ && /bind*/ && $3 ~ /exec/ && NF && $4 !~ /^ *$/ {gsub(/\$scrPath/, scrPath, $4); print $4}' $keyConf | sed "s#\"#'#g" )
+  comments=$(awk  -F ',' '!/^#/ && /bind*/ && $3 ~ /exec/ && NF && $4 !~ /^ *$/ { print $4}' $keyConf | sed "s#\"#'#g" )
+  comments=$(substitute_vars "$comments" | awk -F'#' '{gsub(/^ */, "", $1); gsub(/ *$/, "", $1); split($2, a, " "); a[1] = toupper(substr(a[1], 1, 1)) substr(a[1], 2); $2 = a[1]; for(i=2; i<=length(a); i++) $2 = $2" "a[i]; gsub(/^ */, "", $2); gsub(/ *$/, "", $2); if (length($1) > 0) print "\""$1"\" : \""(length($2) > 0 ? $2 : $1)"\","}'|
+  awk '!seen[$0]++')
+  # echo "$comments"
+#  exit
 cat << EOF > $tmpMap
 # hyprdots-keybinds.jq
 def executables_mapping: {  #? Derived from .args to parse scripts to be Readable
@@ -85,7 +91,7 @@ jsonData="$(hyprctl binds -j | jq -L "$tmpMapDir" -c '
 include "hyprdots-keybinds";
 
   def modmask_mapping: { #? Define mapping for modmask numbers represents bitmask
-    "64": " ",  #? SUPER
+    "64": " ",  #? SUPER  󰻀
 #    "32" : "ERROR:32",  #* Dont know
 #    "16": "Err:16",      #* Dont know
     "8": "ALT", 
@@ -114,6 +120,7 @@ include "hyprdots-keybinds";
     "XF86MonBrightnessDown" : "󰃜",
     "XF86MonBrightnessUp" : "󰃠",
     "switch:on:Lid Switch" : "󰛧",
+    "backspace" : "󰁮"
   };
   def category_mapping: { #? Define Category Names, derive from Dispatcher
     "exec" : "Execute a Command:",
@@ -135,7 +142,6 @@ include "hyprdots-keybinds";
 
   };
 def arg_mapping: { #! Do not Change this used for Demo only... As this will change .args! will be fatal
-    "arg1": "mapped_arg1",
     "arg2": "mapped_arg2",
   };
 
@@ -145,7 +151,7 @@ def arg_mapping: { #! Do not Change this used for Demo only... As this will chan
     "exit" : "End Hyprland Session",
     "movetoworkspacesilent" : "Silently Move to Workspace",
     "movewindow" : "Move Window",
-    "exec" : "" , #? Remove exec as execuatable will give the Description
+    "exec" : "" , #? Remove exec as execuatable will give the Description from separate function
     "movetoworkspace" : "Move To Workspace:",
     "workspace" : "Navigate to Workspace:",
     "togglefloating" : "Toggle Floating",
@@ -197,7 +203,6 @@ if .keybind and .keybind != " " and .keybind != "" then .keybind |= (split(" ") 
 
 
   .arg |= (arg_mapping[.] // .) |
-#! .executables |= gsub("~/.config/hypr/scripts/"; "") | #? Usefull soon
  #!    .executables |= gsub(".sh"; "") | #? Usefull soon
 
   .executables |= (executables_mapping[.] // .) | 
@@ -208,7 +213,7 @@ if .keybind and .keybind != " " and .keybind != "" then .keybind |= (split(" ") 
 
 #? Now we have the metadata we can Group it accordingly
 GROUP() { 
-  awk -F '=!' '
+  awk -F '!=!' '
   {
     category = $1
     binds[category] = binds[category] ? binds[category] "\n" $0 : $0
@@ -231,15 +236,15 @@ GROUP() {
 }
 
 #? Here we we format the output into a desirable format we want.
-DISPLAY() { awk -F '=!' '{if ($0 ~ /=/ && $6 != "") printf "%-25s    >  %-30s\n", $5, $6; else if ($0 ~ /=/) printf "%-25s\n", $5; else print $0}' ;}
+DISPLAY() { awk -F '!=!' '{if ($0 ~ /=/ && $6 != "") printf "%-25s    >  %-30s\n", $5, $6; else if ($0 ~ /=/) printf "%-25s\n", $5; else print $0}' ;}
 
 #? Extra design use for distiction
 header="$(printf "%-35s %-1s %-20s\n" "󰌌 Keybinds" "󱧣" "Description")"
 line="$(printf '%.0s━' $(seq 1 68) "")"
 
 
-#echo "$jsonData"
-metaData="$(echo "$jsonData"  |  jq -r '"\(.category) =! \(.modmask) =! \(.key) =! \(.dispatcher) =! \(.arg) =! \(.keybind) =! \(.description) \(.executables) =! \(.flags)"' | tr -s ' ' | sort -k 1 )" #! this Part Gives extra laoding time as I don't have efforts to make all spaces on each class only 1
+# echo "$jsonData"
+metaData="$(echo "$jsonData"  |  jq -r '"\(.category) !=! \(.modmask) !=! \(.key) !=! \(.dispatcher) !=! \(.arg) !=! \(.keybind) !=! \(.description) \(.executables) !=! \(.flags)"' | tr -s ' ' | sort -k 1 )" #! this Part Gives extra laoding time as I don't have efforts to make all spaces on each class only 1
 #  echo "$metaData"
 
 display="$(echo "$metaData" | GROUP | DISPLAY )"
@@ -263,8 +268,8 @@ sel_1=$(echo "$selected" | cut -d '>' -f 1 | awk '{$1=$1};1')
 sel_2=$(echo "$selected" | cut -d '>' -f 2 | awk '{$1=$1};1')
 run="$(echo "$metaData" | grep "$sel_1" | grep "$sel_2" )"
 
-run_flg="$(echo "$run" | awk -F '=!' '{print $8}')"
-run_sel="$(echo "$run" | awk -F '=!' '{gsub(/^ *| *$/, "", $5); if ($5 ~ /[[:space:]]/ && $5 !~ /^[0-9]+$/ && substr($5, 1, 1) != "-") print $4, "\""$5"\""; else print $4, $5}')"
+run_flg="$(echo "$run" | awk -F '!=!' '{print $8}')"
+run_sel="$(echo "$run" | awk -F '!=!' '{gsub(/^ *| *$/, "", $5); if ($5 ~ /[[:space:]]/ && $5 !~ /^[0-9]+$/ && substr($5, 1, 1) != "-") print $4, "\""$5"\""; else print $4, $5}')"
 #   echo "$run_sel" ; echo "$run_flg"
 
 #? 

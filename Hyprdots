@@ -1,5 +1,5 @@
 #!/bin/bash
-hyprdots_ctl_version=v0.2.0.14.24010814
+hyprdots_ctl_version=v0.2.0.18.24010902
 
 export PATH=$PATH:/usr/lib/hyprdots-ctl/
 

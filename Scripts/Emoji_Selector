@@ -6,7 +6,6 @@ export PATH=$PATH:/usr/lib/hyprdots-ctl/
 
 . GLOBAL
 
-etcDir="/home/khing/GitHub/Hyprdots-ctl/Configs"
 emojiData="$etcDir/emoji.db"
 roFile="$etcDir/emoji.rasi"
 

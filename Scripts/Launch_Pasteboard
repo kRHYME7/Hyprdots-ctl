@@ -1,6 +1,9 @@
 #!/usr/bin/env sh
 export PATH=$PATH:/usr/lib/hyprdots-ctl/
 . GLOBAL
+
+pkill -x rofi && exit
+
 roconf="~/.config/rofi/clipboard.rasi"
 
 # set position
